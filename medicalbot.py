@@ -1,8 +1,9 @@
-import streamlit as st 
+import streamlit as st
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.chains import RetrievalQA
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.vectorstores import FAISS
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 import os
 from dotenv import load_dotenv
@@ -20,35 +21,32 @@ def get_vectorstore():
 def load_llm():
     return ChatGroq(
         groq_api_key=os.getenv("GROQ_API_KEY"),
-        model_name="llama3-8b-8192",
+        model_name="llama-3.3-70b-versatile",
         temperature=0.5,
         max_tokens=512
     )
 
 def set_custom_prompt():
-    template = """
-    Use the pieces of information provided in the context to answer the user's question.
-    If you don't know the answer, just say that you don't know. Do not try to make up an answer.
-    Do not provide anything outside the given context.
-
-    Context:
-    {context}
-
-    Question:
-    {question}
-
-    Start the answer directly. No small talk, please.
-    """
-    return PromptTemplate(template=template, input_variables=["context", "question"])
-
-def create_chain():
-    return RetrievalQA.from_chain_type(
-        llm=load_llm(),
-        chain_type="stuff",
-        retriever=get_vectorstore().as_retriever(search_kwargs={"k": 3}),
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": set_custom_prompt()}
+    system_prompt = (
+        "Use the pieces of information provided in the context to answer the user's question.\n"
+        "If you don't know the answer, just say that you don't know. Do not try to make up an answer.\n"
+        "Do not provide anything outside the given context.\n\n"
+        "Context:\n{context}\n\n"
+        "Start the answer directly. No small talk, please."
     )
+    return ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{input}"),
+    ])
+
+@st.cache_resource
+def create_chain():
+    llm = load_llm()
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 3})
+    prompt = set_custom_prompt()
+    document_chain = create_stuff_documents_chain(llm, prompt)
+    retrieval_chain = create_retrieval_chain(retriever, document_chain)
+    return retrieval_chain
 
 def main():
     st.set_page_config(page_title="MediMind Chatbot", page_icon="🩺")
@@ -58,11 +56,9 @@ def main():
     if 'messages' not in st.session_state:
         st.session_state.messages = []
 
-    # Display chat history
     for message in st.session_state.messages:
         st.chat_message(message["role"]).markdown(message["content"])
 
-    # Chat input
     prompt = st.chat_input("Ask a medical question...")
     if prompt:
         st.chat_message("user").markdown(prompt)
@@ -70,12 +66,12 @@ def main():
 
         with st.spinner("Thinking..."):
             try:
-                qa_chain = create_chain()
-                response = qa_chain.invoke({"query": prompt})
-                result = response["result"]
+                chain = create_chain()
+                response = chain.invoke({"input": prompt})
+                result = response["answer"]
 
-                # Format source docs
-                sources = response.get("source_documents", [])
+                # LCEL retrieval chain returns retrieved docs under "context"
+                sources = response.get("context", [])
                 formatted_sources = ""
                 for i, doc in enumerate(sources, 1):
                     source_name = doc.metadata.get('source', f'Document {i}')
@@ -88,12 +84,9 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
 
-    # Optional Reset Button
     if st.button("🔄 Reset Chat"):
         st.session_state.messages = []
         st.rerun()
 
 if __name__ == "__main__":
     main()
-
-
