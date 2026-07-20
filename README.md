@@ -80,7 +80,7 @@ pipenv run python vector_create.py
 
 
 ### 5. Run Streamlit App
-pipenv run streamlit run medicalbot.py
+streamlit run medicalbot.py
 
 
 
