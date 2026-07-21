@@ -19,6 +19,7 @@ def load_raw_documents(data):
 documnts=load_raw_documents(data=DATA_PATH)
 # print(f"Length of PDF Pages: {len(documnts)}")
 
+
 # Create Chunks
 def create_chunks(extracted_data):
     text_splitter=RecursiveCharacterTextSplitter(
