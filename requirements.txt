@@ -1,10 +1,12 @@
-streamlit
+gradio
 python-dotenv
 langchain
 langchain-community
+langchain-classic
 langchain-core
 langchain-groq
 langchain-huggingface
 sentence-transformers
 faiss-cpu  # or use faiss-gpu if you're using GPU
 pypdf
+torchvision
