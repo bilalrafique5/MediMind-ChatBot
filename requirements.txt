@@ -1,12 +1,14 @@
-gradio
+streamlit
 python-dotenv
 langchain
-langchain-community
 langchain-classic
+langchain-community
 langchain-core
 langchain-groq
 langchain-huggingface
 sentence-transformers
-faiss-cpu  # or use faiss-gpu if you're using GPU
+faiss-cpu
 pypdf
 torchvision
+gradio
+requests
