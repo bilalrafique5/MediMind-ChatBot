@@ -38,7 +38,7 @@ def calculator(expression: str) -> str:
 def wikipedia_search(query: str) -> str:
     """Search Wikipedia for general knowledge questions (people, places, events, history)."""
     try:
-        headers = {"User-Agent": "MediMindChatbot/1.0 (contact: your_email@example.com)"}
+        headers = {"User-Agent": "MediMindChatbot/1.0 (contact: chbilalrafique2@gmail.com)"}
 
         search_url = "https://en.wikipedia.org/w/api.php"
         params = {
@@ -96,7 +96,7 @@ def create_agent_executor():
 def main():
     st.set_page_config(page_title="MediMind Chatbot", page_icon="🩺")
     st.title("🧠 MediMind Chatbot")
-    st.markdown("Ask me anything — medical topics from your documents, or general knowledge.")
+    st.markdown("Ask me anything — medical topics from your documents, or general knowledge or about the project owner")
 
     if 'messages' not in st.session_state:
         st.session_state.messages = []
