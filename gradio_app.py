@@ -28,7 +28,7 @@ def load_llm():
     if _llm is None:
         _llm = ChatGroq(
             groq_api_key=os.getenv("GROQ_API_KEY"),
-            model_name="openai/gpt-oss-120b",
+            model_name="openai/gpt-oss-20b",
             temperature=0.5,
             max_tokens=512
         )
