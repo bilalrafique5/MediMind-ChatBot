@@ -12,6 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 from medicine_store import (
     add_to_cart,
+    add_medicine_order,
     cart_items,
     cart_total,
     checkout,
@@ -155,7 +156,10 @@ def render_recommendations():
 
 def render_chat():
     st.subheader("MediMind agent")
-    st.caption("Ask about uploaded documents or describe a need such as ‘I have a headache’.")
+    st.caption("Type naturally. You can ask a question, request a suggestion, or buy medicines directly.")
+    with st.container(border=True):
+        st.markdown("**Try writing:** `I want one paracetamol and two vitamin D tablets`")
+        st.caption("The medicines will be added to your cart automatically. Open the cart tab to checkout.")
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -164,6 +168,19 @@ def render_chat():
     if not user_query:
         return
     st.session_state.messages.append({"role": "user", "content": user_query})
+    order_added, order_message = add_medicine_order(
+        st.session_state.cart,
+        user_query,
+        st.session_state.catalog,
+    )
+    if order_added:
+        answer = (
+            f"{order_message} Your cart is ready. Open **Cart and checkout** "
+            "to enter delivery details and place your order."
+        )
+        st.session_state.pending_recommendations = []
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        st.rerun()
     recommendations = recommend_medicines(st.session_state.catalog, user_query)
     if recommendations:
         answer = "I found matching catalog options below. Review them and add one to your cart. I cannot diagnose conditions."

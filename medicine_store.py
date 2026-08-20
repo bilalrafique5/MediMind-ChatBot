@@ -1,6 +1,7 @@
 """Deterministic medicine catalog and commerce helpers for MediMind."""
 
 from copy import deepcopy
+import re
 
 
 _MEDICINE_TEMPLATES = [
@@ -24,6 +25,7 @@ _MEDICINE_TEMPLATES = [
     ("Hydrocortisone Cream", "Skin care", "Short-term relief from mild skin irritation and itching", 180, "The Searle Company"),
     ("Artificial Tears", "Eye care", "Lubricating drops for dry or tired eyes", 290, "Sami Pharmaceuticals"),
     ("Iron Supplement", "Vitamin", "Iron and folic acid nutritional supplement", 390, "Atco Laboratories"),
+    ("Vitamin D", "Vitamin", "Vitamin D supplement for nutritional support", 360, "Nutrifactor"),
 ]
 
 
@@ -92,6 +94,60 @@ def recommend_medicines(catalog, request):
     if category is None:
         return []
     return [medicine for medicine in catalog if medicine["category"] == category and medicine["stock"] > 0][:3]
+
+
+def parse_medicine_order(request, catalog):
+    """Extract medicine quantities from a natural-language shopping request."""
+    quantity_words = {
+        "a": 1,
+        "an": 1,
+        "one": 1,
+        "two": 2,
+        "to": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+    }
+    request = request.lower().replace("vit d", "vitamin d")
+    bases = sorted(
+        {item["name"].rsplit(" ", 2)[0].lower() for item in catalog},
+        key=len,
+        reverse=True,
+    )
+    matches = []
+    for base in bases:
+        start = request.find(base)
+        if start < 0:
+            continue
+        prefix = request[max(0, request.rfind(",", 0, start) + 1):start]
+        prefix = prefix.rsplit(" and ", 1)[-1]
+        quantity = 1
+        quantity_match = re.search(r"\b(\d+|a|an|one|two|to|three|four|five)\b", prefix)
+        if quantity_match:
+            token = quantity_match.group(1)
+            quantity = int(token) if token.isdigit() else quantity_words[token]
+        medicine = next(item for item in catalog if item["name"].lower().startswith(f"{base} "))
+        matches.append((medicine["id"], quantity, medicine["name"]))
+    return matches
+
+
+def add_medicine_order(cart, request, catalog):
+    """Add all medicines recognized in a chat order and return a friendly result."""
+    parsed = parse_medicine_order(request, catalog)
+    if not parsed:
+        return False, "I could not identify a medicine. Try: 'add two paracetamol and one vitamin D'."
+    added = []
+    errors = []
+    for medicine_id, quantity, medicine_name in parsed:
+        ok, message = add_to_cart(cart, medicine_id, quantity, catalog)
+        if ok:
+            added.append(f"{quantity} x {medicine_name}")
+        else:
+            errors.append(message)
+    response = "Added " + ", ".join(added) + " to your cart." if added else ""
+    if errors:
+        response += " " + " ".join(errors)
+    return bool(added), response.strip()
 
 
 def add_to_cart(cart, medicine_id, quantity, catalog):

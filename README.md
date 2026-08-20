@@ -89,7 +89,7 @@ streamlit run medicalbot.py
 
 The Streamlit app has three views:
 
-1. **Agent chat**: Ask about uploaded documents or describe a need such as “I have a headache”. Matching catalog options are found by the deterministic medicine service and can be added to the cart.
+1. **Agent chat**: Ask about uploaded documents, describe a need such as “I have a headache”, or buy directly with a message such as “I want one paracetamol and two vitamin D tablets”. Recognized medicines are added to the cart automatically.
 2. **Medicine catalog**: Search by medicine, category, or symptom, select a quantity, and add items to the cart.
 3. **Cart and checkout**: Enter delivery details, place an order, receive an order ID, and decrement the session inventory.
 
