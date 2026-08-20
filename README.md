@@ -12,6 +12,9 @@ MediMind is an AI-powered medical chatbot that uses **LangChain**, **FAISS**, an
 - 🤖 LLM-powered answers using `llama3-8b-8192` via Groq API
 - 🧠 Custom prompt template for medical accuracy
 - 💬 Interactive chat UI with memory
+- 🛒 Agentic medicine catalog with 200 dummy medicines
+- 📦 Session-based cart, stock validation, checkout, and order confirmation
+- 🔎 Symptom-aware catalog recommendations that can be added to the cart from chat
 - 🔐 `.env` based API key security
 
 ---
@@ -81,6 +84,16 @@ pipenv run python vector_create.py
 
 ### 5. Run Streamlit App
 streamlit run medicalbot.py
+
+## Medicine store workflow
+
+The Streamlit app has three views:
+
+1. **Agent chat**: Ask about uploaded documents or describe a need such as “I have a headache”. Matching catalog options are found by the deterministic medicine service and can be added to the cart.
+2. **Medicine catalog**: Search by medicine, category, or symptom, select a quantity, and add items to the cart.
+3. **Cart and checkout**: Enter delivery details, place an order, receive an order ID, and decrement the session inventory.
+
+The catalog is intentionally dummy data for demonstration. It is not connected to a payment provider or a real pharmacy inventory system, and recommendations do not replace advice from a qualified clinician.
 
 
 
