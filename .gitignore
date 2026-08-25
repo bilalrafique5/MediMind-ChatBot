@@ -1,1 +1,7 @@
 .env
+myvenv
+.streamlit
+.devcontainer
+.agents
+__pycache__
+vectorestore

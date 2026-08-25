@@ -20,6 +20,12 @@ from medicine_store import (
     recommend_medicines,
     search_medicines,
 )
+from notification_service import (
+    generate_invoice_html,
+    send_email_invoice,
+    send_sms_notification,
+)
+import streamlit.components.v1 as components
 
 load_dotenv()
 DB_FAISS_PATH = "vectorestore/db_faiss"
@@ -102,13 +108,54 @@ def render_catalog():
                 (st.success if ok else st.error)(message)
 
 
+def render_order_invoice_banner(order):
+    with st.container(border=True):
+        st.markdown(f"### 🎉 Order Confirmed — `{order['order_id']}`")
+        st.caption(f"Placed on {order.get('created_at', '')} | Cash on Delivery | Total: {format_pkr(order['total_pkr'])}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            email_ok, email_msg = order.get("email_notification", (True, "Email dispatched."))
+            if email_ok:
+                st.success(f"**Email Notification**: {email_msg}", icon=":material/mark_email_read:")
+            else:
+                st.warning(f"**Email Notice**: {email_msg}", icon=":material/mail:")
+        with col2:
+            sms_ok, sms_msg = order.get("sms_notification", (True, "SMS dispatched."))
+            if sms_ok:
+                st.success(f"**SMS Notification**: {sms_msg}", icon=":material/sms:")
+            else:
+                st.warning(f"**SMS Notice**: {sms_msg}", icon=":material/sms_failed:")
+
+        invoice_html = order.get("invoice_html") or generate_invoice_html(order)
+        
+        st.download_button(
+            label="Download Invoice (.html)",
+            data=invoice_html,
+            file_name=f"MediMind_Invoice_{order['order_id']}.html",
+            mime="text/html",
+            icon=":material/download:",
+            type="primary"
+        )
+        
+        with st.expander("📄 View Official Invoice Details", expanded=False):
+            components.html(invoice_html, height=520, scrolling=True)
+
+
 def render_cart():
     st.subheader("Review your order")
     st.caption("Confirm your items and delivery details before placing the order.")
+    
+    if st.session_state.last_order:
+        render_order_invoice_banner(st.session_state.last_order)
+
     items = cart_items(st.session_state.cart, st.session_state.catalog)
     if not items:
-        st.info("Your cart is empty. Add a medicine from the catalog or agent recommendations.", icon=":material/shopping_cart:")
+        if not st.session_state.last_order:
+            st.info("Your cart is empty. Add a medicine from the catalog or agent recommendations.", icon=":material/shopping_cart:")
         return
+
+    st.markdown("#### Items in your current cart")
     for item in items:
         with st.container(border=True):
             item_details, item_total = st.columns([3, 1], vertical_alignment="center")
@@ -122,19 +169,32 @@ def render_cart():
     st.metric("Order total", format_pkr(cart_total(st.session_state.cart, st.session_state.catalog)))
     with st.form("checkout"):
         st.markdown("#### Delivery details")
-        customer_name = st.text_input("Full name")
-        phone = st.text_input("Phone number")
-        address = st.text_area("Delivery address")
+        customer_name = st.text_input("Full name", placeholder="Muhammad Ali")
+        phone = st.text_input("Phone number (for SMS notification)", placeholder="+923001234567")
+        email = st.text_input("Email address (for invoice notification)", placeholder="ali@example.com")
+        address = st.text_area("Delivery address", placeholder="House #12, Street 4, Sector F-7, Islamabad")
         place_order = st.form_submit_button("Place order", type="primary", icon=":material/check_circle:")
     if place_order:
-        if not all(value.strip() for value in (customer_name, phone, address)):
-            st.warning("Please complete your name, phone number, and delivery address.", icon=":material/warning:")
+        if not all(value.strip() for value in (customer_name, phone, email, address)):
+            st.warning("Please complete your name, phone number, email address, and delivery address.", icon=":material/warning:")
             return
         ok, message, order = checkout(st.session_state.cart, st.session_state.catalog)
         if ok:
             order["order_id"] = f"MM-{datetime.now():%Y%m%d%H%M%S}"
+            order["customer_name"] = customer_name
+            order["phone"] = phone
+            order["email"] = email
+            order["address"] = address
+            order["created_at"] = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+
+            # Dispatch Email & SMS Notifications
+            email_ok, email_msg = send_email_invoice(order, email)
+            sms_ok, sms_msg = send_sms_notification(order, phone)
+            order["email_notification"] = (email_ok, email_msg)
+            order["sms_notification"] = (sms_ok, sms_msg)
+            order["invoice_html"] = generate_invoice_html(order)
+
             st.session_state.last_order = order
-            st.success(f"{message} Your order ID is {order['order_id']}.", icon=":material/check_circle:")
             st.rerun()
         st.error(message, icon=":material/error:")
 
